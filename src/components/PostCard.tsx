@@ -3,60 +3,54 @@
 import { Post } from "@/types/post";
 import { useRouter } from "next/navigation";
 
-
 interface PostCardProps {
   post: Post;
-  onLike?: (postId: string) => void;
 }
 
-export default function PostCard({ post, onLike }: PostCardProps) {
+function previewText(content: string, maxLen = 140) {
+  const trimmed = content.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen).trim()}…`;
+}
+
+export default function PostCard({ post }: PostCardProps) {
   const router = useRouter();
 
   const createdAtLabel = (() => {
-    // createdAt은 ISO 문자열로 제공됩니다.
-    // localStorage 데이터가 깨져있는 경우를 대비해 안전하게 처리합니다.
     const date = new Date(post.createdAt);
     return Number.isNaN(date.getTime())
       ? post.createdAt
-      : date.toLocaleDateString("ko-KR");
+      : date.toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
   })();
-
-  const commentCount = post.comments?.length ?? 0;
 
   const handleClick = () => {
     router.push(`/community/${post.id}`);
   };
 
   return (
-    <article className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent hover:text-accent-foreground">
-      <button
-        type="button"
-        onClick={handleClick}
-        className="block w-full text-left"
-        aria-label={`${post.title} 상세로 이동`}
-      >
-        <h2 className="text-base font-semibold leading-snug">{post.title}</h2>
-      </button>
+    <button
+      type="button"
+      onClick={handleClick}
+      className="group flex h-full w-full flex-col border border-neutral-200 bg-white p-6 text-left shadow-sm transition-all duration-300 ease-out hover:z-10 hover:scale-[1.02] hover:shadow-lg"
+    >
+      <h2 className="font-serif-brand text-lg font-medium leading-snug tracking-wide text-neutral-900 transition-colors group-hover:text-neutral-700">
+        {post.title}
+      </h2>
 
-      <div className="mt-2 text-sm text-muted-foreground">
-        <div>작성자: {post.author}</div>
-        <div>작성일: {createdAtLabel}</div>
-      </div>
+      <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-neutral-500">
+        {previewText(post.content)}
+      </p>
 
-      <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onLike?.(post.id);
-          }}
-          className="rounded-lg px-2 py-1 transition-colors hover:bg-background/60"
-          aria-label={`좋아요 (${post.likes})`}
-        >
-          좋아요 {post.likes}
-        </button>
-        <span>댓글 {commentCount}</span>
+      <div className="mt-6 flex items-end justify-between gap-4 border-t border-neutral-100 pt-4 text-[10px] uppercase tracking-[0.2em] text-neutral-400">
+        <span className="max-w-[55%] truncate text-neutral-600">{post.author}</span>
+        <time dateTime={post.createdAt} className="shrink-0 tabular-nums">
+          {createdAtLabel}
+        </time>
       </div>
-    </article>
+    </button>
   );
 }
