@@ -5,7 +5,7 @@ export interface Comment {
   createdAt: string;
 }
 
-interface PostBase {
+export interface PostBase {
   id: string;
   title: string;
   content: string;

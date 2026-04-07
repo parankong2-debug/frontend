@@ -1,7 +1,7 @@
 "use client";
 
 import PostCard from "@/components/PostCard";
-import { Post } from "@/types/post";
+import { PostBase } from "@/types/post";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -17,7 +17,7 @@ export default function BoardPage({
   loading,
   error,
 }: {
-  posts: Post[];
+  posts: PostBase[];
   loading: boolean;
   error: string | null;
 }) {

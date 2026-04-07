@@ -1,34 +1,43 @@
 "use client";
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { getPosts, savePosts } from "@/lib/mockData";
-import { Comment, Post } from "@/types/post";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { createComment, deletePost, fetchPost, toggleLike } from "@/lib/api";
+import { Comment, PostDetail } from "@/types/post";
 import CommentItem from "@/components/CommentItem";
-// TODO: 필요한 import를 추가하세요
-// - useState, useEffect (react)
-// - useParams (next/navigation)
-// - getPosts, savePosts (lib/mockData)
-// - Post 타입 (types/post)
-// - CommentItem 컴포넌트 (components/CommentItem)
 
 export default function PostDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const postId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [commentContent, setCommentContent] = useState("");
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [commentAuthor, setCommentAuthor] = useState("");
+  const [post, setPost] = useState<PostDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isCommenting, setIsCommenting] = useState(false);
 
-  const post = useMemo((): Post | null => {
-    if (!postId) return null;
-    // refreshTick은 로컬스토리지 변경 이후 useMemo를 다시 돌리기 위한 트리거입니다.
-    void refreshTick;
+  const loadPost = async () => {
+    if (!postId) return;
+    setLoading(true);
+    setError(null);
     try {
-      const posts = getPosts();
-      return posts.find((p) => p.id === postId) ?? null;
-    } catch {
-      return null;
+      const data = await fetchPost(postId);
+      setPost(data);
+    } catch (e) {
+      setPost(null);
+      setError("게시글을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
     }
-  }, [postId, refreshTick]);
+  };
+
+  useEffect(() => {
+    void loadPost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]);
 
   const createdAtLabel = (() => {
     if (!post) return "";
@@ -38,53 +47,70 @@ export default function PostDetailPage() {
       : date.toLocaleString("ko-KR");
   })();
 
-  const handleLike = () => {
-    if (!post) return;
-
-    const updatedPost: Post = {
-      ...post,
-      likes: post.likes + 1,
-    };
-
-    const posts = getPosts();
-    const updatedPosts = posts.map((p) =>
-      p.id === post.id ? updatedPost : p,
-    );
-    savePosts(updatedPosts);
-    setRefreshTick((t) => t + 1);
+  const handleLike = async () => {
+    if (!postId || !post || isLiking) return;
+    setIsLiking(true);
+    try {
+      const updated = await toggleLike(postId);
+      setPost(updated);
+    } catch {
+      alert("좋아요 처리에 실패했습니다.");
+    } finally {
+      setIsLiking(false);
+    }
   };
 
-  const handleComment = () => {
-    if (!post) return;
+  const handleComment = async () => {
+    if (!postId || !post || isCommenting) return;
 
     const content = commentContent.trim();
-    if (!content) return;
+    const author = commentAuthor.trim();
+    if (!content || !author) {
+      alert("댓글 작성자와 내용을 입력해주세요.");
+      return;
+    }
 
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      content,
-      author: "익명",
-      createdAt: new Date().toISOString(),
-    };
+    setIsCommenting(true);
+    try {
+      const newComment = (await createComment(postId, {
+        content,
+        author,
+      })) as Comment;
+      setPost((prev) =>
+        prev ? { ...prev, comments: [...(prev.comments ?? []), newComment] } : prev
+      );
+      setCommentContent("");
+    } catch {
+      alert("댓글 작성에 실패했습니다.");
+    } finally {
+      setIsCommenting(false);
+    }
+  };
 
-    const updatedPost: Post = {
-      ...post,
-      comments: [...(post.comments ?? []), newComment],
-    };
+  const handleDelete = async () => {
+    if (!postId || isDeleting) return;
+    const ok = confirm("정말 삭제할까요?");
+    if (!ok) return;
 
-    const posts = getPosts();
-    const updatedPosts = posts.map((p) =>
-      p.id === post.id ? updatedPost : p,
-    );
-    savePosts(updatedPosts);
-    setRefreshTick((t) => t + 1);
-    setCommentContent("");
+    setIsDeleting(true);
+    try {
+      await deletePost(postId);
+      router.push("/community");
+    } catch {
+      alert("게시글 삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
     <div>
       <h1>게시글 상세</h1>
-      {!post ? (
+      {loading ? (
+        <p>로딩 중…</p>
+      ) : error ? (
+        <p>{error}</p>
+      ) : !post ? (
         <p>게시글을 찾을 수 없습니다.</p>
       ) : (
         <>
@@ -96,9 +122,14 @@ export default function PostDetailPage() {
             <div>작성일: {createdAtLabel}</div>
           </div>
 
-          <button type="button" onClick={handleLike}>
-            좋아요 {post.likes}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button type="button" onClick={handleLike} disabled={isLiking}>
+              {isLiking ? "처리 중…" : `좋아요 ${post.likes}`}
+            </button>
+            <button type="button" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? "삭제 중…" : "삭제"}
+            </button>
+          </div>
 
           <section>
             <h3>댓글</h3>
@@ -109,13 +140,22 @@ export default function PostDetailPage() {
             </div>
 
             <div style={{ marginTop: 16 }}>
+              <input
+                value={commentAuthor}
+                onChange={(e) => setCommentAuthor(e.target.value)}
+                placeholder="댓글 작성자"
+              />
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 placeholder="댓글을 입력하세요"
               />
-              <button type="button" onClick={handleComment}>
-                댓글 작성
+              <button
+                type="button"
+                onClick={handleComment}
+                disabled={isCommenting || !commentAuthor.trim() || !commentContent.trim()}
+              >
+                {isCommenting ? "작성 중…" : "댓글 작성"}
               </button>
             </div>
           </section>

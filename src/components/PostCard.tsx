@@ -1,10 +1,10 @@
 "use client";
 
-import { Post } from "@/types/post";
+import { PostBase } from "@/types/post";
 import { useRouter } from "next/navigation";
 
 interface PostCardProps {
-  post: Post;
+  post: PostBase;
 }
 
 function previewText(content: string, maxLen = 140) {

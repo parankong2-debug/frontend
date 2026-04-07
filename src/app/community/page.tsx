@@ -1,38 +1,50 @@
 "use client";
 
 import BoardPage from "@/components/BoardPage";
-import { Post } from "@/types/post";
-import { useEffect, useState } from "react";
+import { fetchPosts } from "@/lib/api";
+import { PostBase } from "@/types/post";
+import { useCallback, useEffect, useState } from "react";
 
 export default function CommunityPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostBase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const res = await fetch("/api/posts");
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-        if (!res.ok) {
-          throw new Error("게시글을 불러오지 못했습니다.");
-        }
-
-        const data: Post[] = await res.json();
-        setPosts(data);
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("게시글을 불러오지 못했습니다.");
-        }
-      } finally {
-        setLoading(false);
+    try {
+      const data = await fetchPosts();
+      setPosts(data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("게시글을 불러오지 못했습니다.");
       }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPosts();
+
+    // When navigating back from write/detail, the page can be restored from cache.
+    // Refetch on focus/visibility to keep the list fresh.
+    const onFocus = () => void loadPosts();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void loadPosts();
     };
 
-    loadPosts();
-  }, []);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [loadPosts]);
 
   return <BoardPage posts={posts} loading={loading} error={error} />;
 }

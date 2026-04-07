@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initialPosts } from "@/lib/mockData";
 import { Post } from "@/types/post";
-
-let posts: Post[] = [...initialPosts];
+import { getPostStore } from "./store";
 
 export async function GET() {
-  return NextResponse.json(posts);
+  return NextResponse.json(getPostStore());
 }
 
 export async function POST(req: NextRequest) {
@@ -22,7 +20,8 @@ export async function POST(req: NextRequest) {
       comments: [],
     };
 
-    posts = [newPost, ...posts];
+    const posts = getPostStore();
+    posts.unshift(newPost);
 
     return NextResponse.json(newPost, { status: 201 });
   } catch (error) {
