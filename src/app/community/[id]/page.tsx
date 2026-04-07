@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AxiosError } from "axios";
-import { createComment, deletePost, fetchPost, toggleLike } from "@/lib/api";
+import {
+  createComment,
+  deleteComment,
+  deletePost,
+  fetchPost,
+  toggleLike,
+} from "@/lib/api";
 import { Comment, PostDetail } from "@/types/post";
 import CommentItem from "@/components/CommentItem";
 
@@ -20,6 +26,7 @@ export default function PostDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   const loadPost = async () => {
     if (!postId) {
@@ -114,6 +121,29 @@ export default function PostDetailPage() {
     }
   };
 
+  const handleCommentDelete = async (commentId: string) => {
+    if (!post || deletingCommentId) return;
+    const ok = confirm("댓글을 삭제하시겠습니까?");
+    if (!ok) return;
+
+    setDeletingCommentId(commentId);
+    try {
+      await deleteComment(commentId);
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: prev.comments.filter((comment) => comment.id !== commentId),
+            }
+          : prev
+      );
+    } catch {
+      alert("댓글 삭제에 실패했습니다.");
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
+
   return (
     <div>
       <button type="button" onClick={() => router.push("/community")}>
@@ -152,7 +182,12 @@ export default function PostDetailPage() {
             <h3>댓글</h3>
             <div>
               {post.comments.map((comment) => (
-                <CommentItem key={comment.id} comment={comment} />
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  onDelete={handleCommentDelete}
+                  deleting={deletingCommentId === comment.id}
+                />
               ))}
             </div>
 
