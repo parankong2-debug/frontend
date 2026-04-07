@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { Comment, PostDetail } from "@/types/post";
 import CommentItem from "@/components/CommentItem";
+import Navbar from "@/components/Navbar";
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -145,74 +146,134 @@ export default function PostDetailPage() {
   };
 
   return (
-    <div>
-      <button type="button" onClick={() => router.push("/community")}>
-        ← 목록으로
-      </button>
-      <h1>게시글 상세</h1>
-      {loading ? (
-        <p>로딩 중…</p>
-      ) : error ? (
-        <div>
-          <p>{error}</p>
-          <Link href="/community">목록으로 돌아가기</Link>
-        </div>
-      ) : !post ? (
-        <p>게시글을 찾을 수 없습니다.</p>
-      ) : (
-        <>
-          <h2>{post.title}</h2>
-          <p style={{ whiteSpace: "pre-wrap" }}>{post.content}</p>
+    <div className="min-h-screen bg-slate-50/60 text-slate-900">
+      <Navbar />
+      <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-10">
+        <button
+          type="button"
+          onClick={() => router.push("/community")}
+          className="mb-6 inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          ← 목록으로
+        </button>
 
-          <div>
-            <div>작성자: {post.author}</div>
-            <div>작성일: {createdAtLabel}</div>
+        {loading ? (
+          <p className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            로딩 중...
+          </p>
+        ) : error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-sm text-rose-600">{error}</p>
+            <Link
+              href="/community"
+              className="mt-4 inline-flex rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100"
+            >
+              목록으로 돌아가기
+            </Link>
           </div>
+        ) : !post ? (
+          <p className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            게시글을 찾을 수 없습니다.
+          </p>
+        ) : (
+          <div className="space-y-6">
+            <article className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.07)] sm:p-8">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                {post.title}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                <span>작성자 {post.author}</span>
+                <span className="text-slate-300">|</span>
+                <time dateTime={post.createdAt}>{createdAtLabel}</time>
+              </div>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button type="button" onClick={handleLike} disabled={isLiking}>
-              {isLiking ? "처리 중…" : `좋아요 ${post.likes}`}
-            </button>
-            <button type="button" onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? "삭제 중…" : "삭제"}
-            </button>
+              <div className="my-6 h-px bg-slate-100" />
+
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-700">
+                {post.content}
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(79,70,229,0.25)] transition-all hover:-translate-y-0.5 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isLiking ? "처리 중..." : `Like ${post.likes}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isDeleting ? "삭제 중..." : "삭제"}
+                </button>
+              </div>
+            </article>
+
+            <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.07)] sm:p-8">
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold tracking-tight text-slate-900">댓글</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  의견을 남겨 다른 사용자와 소통해보세요.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <input
+                    value={commentAuthor}
+                    onChange={(e) => setCommentAuthor(e.target.value)}
+                    placeholder="댓글 작성자"
+                    className="h-14 rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-800 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 sm:h-auto sm:min-h-[170px]"
+                  />
+                  <div className="relative sm:col-span-2">
+                    {!commentContent && (
+                      <span className="pointer-events-none absolute left-4 top-4 text-base text-slate-400">
+                        댓글을 입력하세요
+                      </span>
+                    )}
+                    <textarea
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                      className="min-h-[170px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-800 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleComment}
+                    disabled={isCommenting || !commentAuthor.trim() || !commentContent.trim()}
+                    className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isCommenting ? "작성 중..." : "댓글 작성"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {post.comments.length > 0 ? (
+                  post.comments.map((comment) => (
+                    <CommentItem
+                      key={comment.id}
+                      comment={comment}
+                      onDelete={handleCommentDelete}
+                      deleting={deletingCommentId === comment.id}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    아직 댓글이 없습니다. 첫 댓글을 작성해보세요.
+                  </p>
+                )}
+              </div>
+            </section>
           </div>
-
-          <section>
-            <h3>댓글</h3>
-            <div>
-              {post.comments.map((comment) => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  onDelete={handleCommentDelete}
-                  deleting={deletingCommentId === comment.id}
-                />
-              ))}
-            </div>
-
-            <div style={{ marginTop: 16 }}>
-              <input
-                value={commentAuthor}
-                onChange={(e) => setCommentAuthor(e.target.value)}
-                placeholder="댓글 작성자"
-              />
-              <textarea
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                placeholder="댓글을 입력하세요"
-              />
-              <button
-                type="button"
-                onClick={handleComment}
-                disabled={isCommenting || !commentAuthor.trim() || !commentContent.trim()}
-              >
-                {isCommenting ? "작성 중…" : "댓글 작성"}
-              </button>
-            </div>
-          </section>
-        </>
-      )}
+        )}
+      </main>
     </div>
   );
 }

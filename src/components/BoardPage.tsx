@@ -116,8 +116,8 @@ export default function BoardPage({
 
       <footer id="about" className="border-t border-slate-100 bg-white">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-5 py-10 text-sm text-slate-500 sm:px-8">
-          <p className="font-medium text-slate-700">PulseBoard</p>
-          <p>미니멀하고 감각적인 커뮤니티 경험을 위한 SaaS 스타일 보드.</p>
+          <p className="font-medium text-slate-700">Water Forest</p>
+          <p>질문하고 경험을 나누는 커뮤니티 공간</p>
         </div>
       </footer>
     </div>

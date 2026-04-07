@@ -21,19 +21,19 @@ export default function CommentItem({
   })();
 
   return (
-    <article className="rounded-lg border border-border bg-card p-3">
+    <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium">{comment.author}</span>
+        <span className="text-sm font-semibold text-slate-800">{comment.author}</span>
         <div className="flex items-center gap-2">
           <time
             dateTime={comment.createdAt}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-slate-400"
           >
             {createdAtLabel}
           </time>
           <button
             type="button"
-            className="text-xs text-destructive underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => onDelete?.(comment.id)}
             disabled={deleting}
           >
@@ -42,7 +42,7 @@ export default function CommentItem({
         </div>
       </div>
 
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed">
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
         {comment.content}
       </p>
     </article>
