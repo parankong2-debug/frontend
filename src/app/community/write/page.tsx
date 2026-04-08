@@ -2,53 +2,174 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPost } from "@/lib/api";
+
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  backgroundColor: "#f5f7fb",
+  padding: "40px 20px",
+};
+
+const containerStyle: React.CSSProperties = {
+  maxWidth: "900px",
+  margin: "0 auto",
+};
+
+const backButtonStyle: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: "10px",
+  border: "1px solid #d1d5db",
+  backgroundColor: "white",
+  color: "#111827",
+  cursor: "pointer",
+  marginBottom: "16px",
+  fontSize: "14px",
+  fontWeight: 500,
+};
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: "white",
+  borderRadius: "16px",
+  padding: "28px",
+  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.06)",
+  border: "1px solid #e5e7eb",
+};
+
+const titleStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: "8px",
+  fontSize: "32px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const subtitleStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: "24px",
+  color: "#6b7280",
+  fontSize: "15px",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "8px",
+  color: "#374151",
+  fontSize: "14px",
+  fontWeight: 600,
+};
+
+const inputStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  marginBottom: "18px",
+  padding: "12px 14px",
+  borderRadius: "10px",
+  border: "1px solid #d1d5db",
+  fontSize: "14px",
+  backgroundColor: "#ffffff",
+  boxSizing: "border-box",
+};
+
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle,
+  minHeight: "220px",
+  resize: "vertical",
+};
+
+const submitButtonStyle: React.CSSProperties = {
+  padding: "12px 18px",
+  borderRadius: "10px",
+  border: "none",
+  backgroundColor: "#2563eb",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "14px",
+  fontWeight: 600,
+};
 
 export default function WritePage() {
   const router = useRouter();
 
+  const [author, setAuthor] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    const newPost = {
-      id: Date.now().toString(),
-      title: title,
-      content: content,
-      author: "익명",
-      createdAt: new Date().toISOString().slice(0, 10),
-      likes: 0,
-      comments: [],
-    };
+  const handleSubmit = async () => {
+    if (!author.trim() || !title.trim() || !content.trim()) {
+      alert("모든 항목을 입력해주세요.");
+      return;
+    }
 
-    const savedPosts = localStorage.getItem("posts");
-    const posts = savedPosts ? JSON.parse(savedPosts) : [];
+    try {
+      setSubmitting(true);
 
-    const updatedPosts = [newPost, ...posts];
-    localStorage.setItem("posts", JSON.stringify(updatedPosts));
+      await createPost({
+        author,
+        title,
+        content,
+      });
 
-    router.push("/community");
+      router.push("/community");
+    } catch (err) {
+      console.error(err);
+      alert("게시글 작성에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>글 작성</h1>
+    <div style={pageStyle}>
+      <div style={containerStyle}>
+        <button
+          type="button"
+          onClick={() => router.push("/community")}
+          style={backButtonStyle}
+        >
+          ← 목록으로
+        </button>
 
-      <input
-        type="text"
-        placeholder="제목을 입력하세요"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        style={{ display: "block", width: "100%", marginBottom: "12px", padding: "8px" }}
-      />
+        <div style={cardStyle}>
+          <h1 style={titleStyle}>글 작성</h1>
+          <p style={subtitleStyle}>새 게시글을 작성하고 커뮤니티와 공유해보세요.</p>
 
-      <textarea
-        placeholder="내용을 입력하세요"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        style={{ display: "block", width: "100%", height: "150px", marginBottom: "12px", padding: "8px" }}
-      />
+          <label style={labelStyle}>작성자</label>
+          <input
+            type="text"
+            placeholder="작성자 이름"
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            style={inputStyle}
+          />
 
-      <button onClick={handleSubmit}>작성</button>
+          <label style={labelStyle}>제목</label>
+          <input
+            type="text"
+            placeholder="제목을 입력하세요"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            style={inputStyle}
+          />
+
+          <label style={labelStyle}>내용</label>
+          <textarea
+            placeholder="내용을 입력하세요"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            style={textareaStyle}
+          />
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={submitButtonStyle}
+          >
+            {submitting ? "작성 중..." : "작성"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
