@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPost } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
@@ -89,15 +90,21 @@ const submitButtonStyle: React.CSSProperties = {
 
 export default function WritePage() {
   const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
-  const [author, setAuthor] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/login");
+    }
+  }, [isLoggedIn, router]);
+
   const handleSubmit = async () => {
-    if (!author.trim() || !title.trim() || !content.trim()) {
-      alert("모든 항목을 입력해주세요.");
+    if (!title.trim() || !content.trim()) {
+      alert("제목과 내용을 입력해주세요.");
       return;
     }
 
@@ -105,7 +112,6 @@ export default function WritePage() {
       setSubmitting(true);
 
       await createPost({
-        author,
         title,
         content,
       });
@@ -118,6 +124,10 @@ export default function WritePage() {
       setSubmitting(false);
     }
   };
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <div style={pageStyle}>
@@ -133,15 +143,6 @@ export default function WritePage() {
         <div style={cardStyle}>
           <h1 style={titleStyle}>글 작성</h1>
           <p style={subtitleStyle}>새 게시글을 작성하고 커뮤니티와 공유해보세요.</p>
-
-          <label style={labelStyle}>작성자</label>
-          <input
-            type="text"
-            placeholder="작성자 이름"
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            style={inputStyle}
-          />
 
           <label style={labelStyle}>제목</label>
           <input

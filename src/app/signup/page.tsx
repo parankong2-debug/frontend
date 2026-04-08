@@ -1,0 +1,193 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { register } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
+
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  backgroundColor: "#f5f7fb",
+  padding: "40px 20px",
+};
+
+const containerStyle: React.CSSProperties = {
+  maxWidth: "480px",
+  margin: "0 auto",
+};
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: "white",
+  borderRadius: "16px",
+  padding: "28px",
+  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.06)",
+  border: "1px solid #e5e7eb",
+};
+
+const titleStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: "8px",
+  fontSize: "32px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const subtitleStyle: React.CSSProperties = {
+  marginTop: 0,
+  marginBottom: "24px",
+  color: "#6b7280",
+  fontSize: "15px",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: "8px",
+  color: "#374151",
+  fontSize: "14px",
+  fontWeight: 600,
+};
+
+const inputStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  marginBottom: "18px",
+  padding: "12px 14px",
+  borderRadius: "10px",
+  border: "1px solid #d1d5db",
+  fontSize: "14px",
+  backgroundColor: "#ffffff",
+  boxSizing: "border-box",
+};
+
+const buttonStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "12px 18px",
+  borderRadius: "10px",
+  border: "none",
+  backgroundColor: "#2563eb",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "14px",
+  fontWeight: 600,
+};
+
+const errorStyle: React.CSSProperties = {
+  marginBottom: "16px",
+  padding: "12px 14px",
+  borderRadius: "10px",
+  backgroundColor: "#fef2f2",
+  color: "#dc2626",
+  fontSize: "14px",
+  border: "1px solid #fecaca",
+};
+
+const footerTextStyle: React.CSSProperties = {
+  marginTop: "18px",
+  textAlign: "center",
+  fontSize: "14px",
+  color: "#6b7280",
+};
+
+export default function SignupPage() {
+  const router = useRouter();
+  const setAuth = useAuthStore((state) => state.setAuth);
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async () => {
+    if (!username.trim() || !email.trim() || !password.trim()) {
+      setError("유저네임, 이메일, 비밀번호를 모두 입력해주세요.");
+      return;
+    }
+
+    if (username.trim().length < 2) {
+      setError("유저네임은 2자 이상이어야 합니다.");
+      return;
+    }
+
+    if (password.trim().length < 6) {
+      setError("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError("");
+
+      const data = await register({
+        username,
+        email,
+        password,
+      });
+
+      setAuth(data.access_token, data.user);
+      router.push("/community");
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err?.response?.data?.detail?.error ||
+          "회원가입에 실패했습니다."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={pageStyle}>
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          <h1 style={titleStyle}>회원가입</h1>
+          <p style={subtitleStyle}>계정을 만들고 커뮤니티를 이용해보세요.</p>
+
+          <label style={labelStyle}>유저네임</label>
+          <input
+            type="text"
+            placeholder="홍길동"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={inputStyle}
+          />
+
+          <label style={labelStyle}>이메일</label>
+          <input
+            type="email"
+            placeholder="user@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={inputStyle}
+          />
+
+          <label style={labelStyle}>비밀번호</label>
+          <input
+            type="password"
+            placeholder="6자 이상 입력하세요"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={inputStyle}
+          />
+
+          {error && <div style={errorStyle}>{error}</div>}
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={buttonStyle}
+          >
+            {submitting ? "가입 중..." : "회원가입"}
+          </button>
+
+          <p style={footerTextStyle}>
+            이미 계정이 있으신가요? <Link href="/login">로그인</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

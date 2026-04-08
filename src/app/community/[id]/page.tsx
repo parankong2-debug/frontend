@@ -10,6 +10,7 @@ import {
   deleteComment,
   deletePost,
 } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 
 type Comment = {
   id: string;
@@ -122,17 +123,10 @@ const sectionTitleStyle: React.CSSProperties = {
   color: "#111827",
 };
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: "8px",
-  color: "#374151",
-  fontSize: "14px",
-  fontWeight: 600,
-};
-
-const inputStyle: React.CSSProperties = {
+const textareaStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
+  minHeight: "140px",
   marginBottom: "16px",
   padding: "12px 14px",
   borderRadius: "10px",
@@ -140,12 +134,12 @@ const inputStyle: React.CSSProperties = {
   fontSize: "14px",
   backgroundColor: "#ffffff",
   boxSizing: "border-box",
+  resize: "vertical",
 };
 
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle,
-  minHeight: "140px",
-  resize: "vertical",
+const messageStyle: React.CSSProperties = {
+  color: "#6b7280",
+  fontSize: "14px",
 };
 
 export default function PostDetailPage() {
@@ -153,31 +147,25 @@ export default function PostDetailPage() {
   const router = useRouter();
   const id = params.id as string;
 
+  const { user, isLoggedIn } = useAuthStore();
+
   const [post, setPost] = useState<PostDetail | null>(null);
-  const [commentAuthor, setCommentAuthor] = useState("");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
 
   useEffect(() => {
     const loadPost = async () => {
       try {
-        setLoading(true);
-        setError("");
         const data = await fetchPost(id);
         setPost(data);
       } catch (err) {
         console.error(err);
-        setError("게시글을 불러오지 못했습니다.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) {
-      loadPost();
-    }
+    if (id) loadPost();
   }, [id]);
 
   const handleLike = async () => {
@@ -193,15 +181,13 @@ export default function PostDetailPage() {
   };
 
   const handleCommentSubmit = async () => {
-    if (!commentAuthor.trim() || !comment.trim()) {
-      alert("작성자와 댓글 내용을 모두 입력해주세요.");
+    if (!comment.trim()) {
+      alert("댓글 내용을 입력해주세요.");
       return;
     }
 
     try {
-      setSubmittingComment(true);
       const newComment = await createComment(id, {
-        author: commentAuthor,
         content: comment,
       });
 
@@ -213,18 +199,15 @@ export default function PostDetailPage() {
         };
       });
 
-      setCommentAuthor("");
       setComment("");
     } catch (err) {
       console.error(err);
-      alert("댓글 작성에 실패했습니다.");
-    } finally {
-      setSubmittingComment(false);
+      alert("댓글 작성 실패");
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    const ok = confirm("정말 댓글을 삭제하시겠습니까?");
+    const ok = confirm("댓글 삭제?");
     if (!ok) return;
 
     try {
@@ -244,12 +227,11 @@ export default function PostDetailPage() {
   };
 
   const handleDeletePost = async () => {
-    const ok = confirm("정말 게시글을 삭제하시겠습니까?");
+    const ok = confirm("게시글 삭제?");
     if (!ok) return;
 
     try {
       await deletePost(id);
-      alert("게시글이 삭제되었습니다.");
       router.push("/community");
     } catch (err) {
       console.error(err);
@@ -267,24 +249,17 @@ export default function PostDetailPage() {
     );
   }
 
-  if (error || !post) {
+  if (!post) {
     return (
       <div style={pageStyle}>
         <div style={containerStyle}>
-          <div style={cardStyle}>
-            <p>{error || "게시글을 찾을 수 없습니다."}</p>
-            <button
-              type="button"
-              onClick={() => router.push("/community")}
-              style={backButtonStyle}
-            >
-              ← 목록으로
-            </button>
-          </div>
+          <div style={cardStyle}>게시글을 찾을 수 없습니다.</div>
         </div>
       </div>
     );
   }
+
+  const isAuthor = user?.username === post.author;
 
   return (
     <div style={pageStyle}>
@@ -294,7 +269,7 @@ export default function PostDetailPage() {
           onClick={() => router.push("/community")}
           style={backButtonStyle}
         >
-          ← 목록으로
+          ← 목록
         </button>
 
         <div style={cardStyle}>
@@ -313,13 +288,16 @@ export default function PostDetailPage() {
             <button type="button" onClick={handleLike} style={primaryButtonStyle}>
               좋아요 누르기
             </button>
-            <button
-              type="button"
-              onClick={handleDeletePost}
-              style={dangerButtonStyle}
-            >
-              게시글 삭제
-            </button>
+
+            {isAuthor && (
+              <button
+                type="button"
+                onClick={handleDeletePost}
+                style={dangerButtonStyle}
+              >
+                게시글 삭제
+              </button>
+            )}
           </div>
         </div>
 
@@ -335,38 +313,32 @@ export default function PostDetailPage() {
               />
             ))
           ) : (
-            <p>아직 댓글이 없습니다.</p>
+            <p style={messageStyle}>아직 댓글이 없습니다.</p>
           )}
         </div>
 
         <div style={cardStyle}>
           <h2 style={sectionTitleStyle}>댓글 작성</h2>
 
-          <label style={labelStyle}>작성자</label>
-          <input
-            type="text"
-            placeholder="작성자 이름"
-            value={commentAuthor}
-            onChange={(e) => setCommentAuthor(e.target.value)}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>내용</label>
-          <textarea
-            placeholder="댓글을 입력하세요"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            style={textareaStyle}
-          />
-
-          <button
-            type="button"
-            onClick={handleCommentSubmit}
-            disabled={submittingComment}
-            style={primaryButtonStyle}
-          >
-            {submittingComment ? "댓글 작성 중..." : "댓글 작성"}
-          </button>
+          {isLoggedIn ? (
+            <>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="댓글을 입력하세요"
+                style={textareaStyle}
+              />
+              <button
+                type="button"
+                onClick={handleCommentSubmit}
+                style={primaryButtonStyle}
+              >
+                댓글 작성
+              </button>
+            </>
+          ) : (
+            <p style={messageStyle}>로그인 후 댓글을 작성할 수 있습니다.</p>
+          )}
         </div>
       </div>
     </div>
