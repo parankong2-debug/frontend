@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "pretendard/dist/web/static/pretendard.css";
 import { Noto_Serif_KR } from "next/font/google";
-import AuthInitializer from "@/components/AuthInitializer";
-import Navbar from "@/components/Navbar";
+import Header from "@/components/Header";
 import { cn } from "@/lib/utils";
 
 const notoSerifKr = Noto_Serif_KR({
@@ -25,8 +24,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn("font-sans", notoSerifKr.variable)}>
       <body className="antialiased">
-        <AuthInitializer />
-        <Navbar />
+        <Header />
         {children}
       </body>
     </html>

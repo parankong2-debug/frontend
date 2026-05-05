@@ -1,6 +1,5 @@
 import axios from "axios";
-import { TokenResponse, User } from "@/types/auth";
-import { PostDetail, PostListItem } from "@/types/post";
+import { PostDetail, PostListItem, TokenResponse, User } from "@/types/post";
 
 const baseURL =
   process.env.NEXT_PUBLIC_API_URL ??
