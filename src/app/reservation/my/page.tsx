@@ -1,6 +1,6 @@
 "use client";
 
-import { cancelReservation, fetchMyReservations } from "@/lib/api";
+import { cancelReservation, fetchMyReservations, fetchRoom } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { Reservation } from "@/types/reservation";
 import { useRouter } from "next/navigation";
@@ -31,6 +31,33 @@ const getToday = () => {
   return `${year}-${month}-${day}`;
 };
 
+const fillMissingRoomNames = async (
+  reservations: Reservation[]
+): Promise<Reservation[]> => {
+  const missingRoomIds = Array.from(
+    new Set(
+      reservations
+        .filter((reservation) => !reservation.roomName)
+        .map((reservation) => reservation.roomId)
+    )
+  );
+
+  if (missingRoomIds.length === 0) return reservations;
+
+  const roomEntries = await Promise.all(
+    missingRoomIds.map(async (roomId) => {
+      const room = await fetchRoom(roomId);
+      return [roomId, room.name] as const;
+    })
+  );
+  const roomNameMap = new Map(roomEntries);
+
+  return reservations.map((reservation) => ({
+    ...reservation,
+    roomName: reservation.roomName ?? roomNameMap.get(reservation.roomId),
+  }));
+};
+
 export default function MyReservationsPage() {
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
@@ -45,7 +72,8 @@ export default function MyReservationsPage() {
 
     try {
       const data = await fetchMyReservations();
-      setReservations(data);
+      const reservationsWithRoomNames = await fillMissingRoomNames(data);
+      setReservations(reservationsWithRoomNames);
     } catch {
       setError(TEXT.loadFailure);
     } finally {
