@@ -66,7 +66,7 @@ export default function ReservationPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+          className="mb-8 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
         >
           {TEXT.back}
         </button>

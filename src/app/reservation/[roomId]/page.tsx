@@ -6,7 +6,7 @@ import { Reservation, Room } from "@/types/reservation";
 import axios from "axios";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const TIME_SLOTS = Array.from({ length: 13 }, (_, i) => {
   const hour = i + 9;
@@ -21,6 +21,7 @@ const TEXT = {
   dateLabel: "\ub0a0\uc9dc \uc120\ud0dd",
   timetableTitle: "\uc2dc\uac04\ud45c",
   reserved: "\uc608\uc57d\ub428",
+  pastTime: "\uc9c0\ub09c \uc2dc\uac04",
   available: "\ube48 \uc2dc\uac04",
   selected: "\uc120\ud0dd\ub428",
   login: "\ub85c\uadf8\uc778",
@@ -44,7 +45,26 @@ interface BusinessErrorResponse {
   };
 }
 
-const getToday = () => new Date().toISOString().split("T")[0];
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatLocalTime = (date: Date) => {
+  const hour = `${date.getHours()}`.padStart(2, "0");
+  const minute = `${date.getMinutes()}`.padStart(2, "0");
+  return `${hour}:${minute}`;
+};
+
+const getNow = () => {
+  const now = new Date();
+  return {
+    date: formatLocalDate(now),
+    time: formatLocalTime(now),
+  };
+};
 
 export default function RoomReservationPage() {
   const params = useParams<{ roomId: string }>();
@@ -54,7 +74,8 @@ export default function RoomReservationPage() {
   const initialize = useAuthStore((state) => state.initialize);
   const [room, setRoom] = useState<Room | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [selectedDate, setSelectedDate] = useState(getToday);
+  const [now, setNow] = useState(getNow);
+  const [selectedDate, setSelectedDate] = useState(() => getNow().date);
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const [purpose, setPurpose] = useState("");
@@ -69,8 +90,16 @@ export default function RoomReservationPage() {
     [reservations]
   );
 
+  const isPastSlot = useCallback(
+    (time: string) => {
+      return selectedDate < now.date || (selectedDate === now.date && time <= now.time);
+    },
+    [now.date, now.time, selectedDate]
+  );
+
   const handleSlotClick = (time: string) => {
     if (getReservationForSlot(time)) return;
+    if (isPastSlot(time)) return;
     if (!isLoggedIn) return;
 
     if (!selectedStart || (selectedStart && selectedEnd)) {
@@ -126,6 +155,26 @@ export default function RoomReservationPage() {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(getNow());
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate < now.date) {
+      setSelectedDate(now.date);
+      return;
+    }
+
+    if (selectedStart && isPastSlot(selectedStart)) {
+      setSelectedStart(null);
+      setSelectedEnd(null);
+    }
+  }, [isPastSlot, now.date, selectedDate, selectedStart]);
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -207,6 +256,7 @@ export default function RoomReservationPage() {
               <input
                 type="date"
                 value={selectedDate}
+                min={now.date}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-indigo-400"
               />
@@ -217,6 +267,7 @@ export default function RoomReservationPage() {
             {TIME_SLOTS.map((time) => {
               const reservation = getReservationForSlot(time);
               const isSelected = isSelectedSlot(time);
+              const isPast = isPastSlot(time);
 
               return (
                 <div
@@ -225,6 +276,8 @@ export default function RoomReservationPage() {
                   className={`flex items-center border-b border-slate-100 p-3 last:border-b-0 ${
                     reservation
                       ? "cursor-not-allowed bg-slate-200"
+                      : isPast
+                        ? "cursor-not-allowed bg-slate-100 text-slate-400"
                       : isSelected
                         ? "cursor-pointer bg-indigo-100"
                         : "cursor-pointer bg-white hover:bg-slate-50"
@@ -236,6 +289,8 @@ export default function RoomReservationPage() {
                   <span className="flex-1 text-sm text-slate-700">
                     {reservation ? (
                       `${reservation.purpose} (${reservation.username})`
+                    ) : isPast ? (
+                      TEXT.pastTime
                     ) : isSelected ? (
                       TEXT.selected
                     ) : (

@@ -23,7 +23,13 @@ const TEXT = {
   roomFallback: "\uc2a4\ud130\ub514\ub8f8",
 };
 
-const getToday = () => new Date().toISOString().split("T")[0];
+const getToday = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, "0");
+  const day = `${today.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function MyReservationsPage() {
   const router = useRouter();
