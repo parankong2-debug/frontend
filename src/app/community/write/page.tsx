@@ -89,7 +89,7 @@ export default function WritePage() {
         <section className="rounded-3xl border border-slate-200/80 bg-white px-5 py-6 shadow-[0_16px_45px_rgba(15,23,42,0.08)] sm:px-8 sm:py-7">
           <header className="mb-6 flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <h1 className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-400">
                 글 작성
               </h1>
               <p className="mt-1 text-sm text-slate-500">
