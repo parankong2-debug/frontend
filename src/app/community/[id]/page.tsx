@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { Comment, PostDetail } from "@/types/post";
 import CommentItem from "@/components/CommentItem";
+import { formatKoreanDateTime } from "@/lib/date";
 import { useAuthStore } from "@/store/authStore";
 
 export default function PostDetailPage() {
@@ -64,10 +65,7 @@ export default function PostDetailPage() {
 
   const createdAtLabel = (() => {
     if (!post) return "";
-    const date = new Date(post.createdAt);
-    return Number.isNaN(date.getTime())
-      ? post.createdAt
-      : date.toLocaleString("ko-KR");
+    return formatKoreanDateTime(post.createdAt);
   })();
 
   const canDeletePost = !!post && !!user && post.author === user.username;

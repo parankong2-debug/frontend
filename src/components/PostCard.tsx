@@ -1,5 +1,6 @@
 "use client";
 
+import { formatKoreanDate } from "@/lib/date";
 import { PostBase } from "@/types/post";
 import { useRouter } from "next/navigation";
 
@@ -16,16 +17,7 @@ function previewText(content: string, maxLen = 140) {
 export default function PostCard({ post }: PostCardProps) {
   const router = useRouter();
 
-  const createdAtLabel = (() => {
-    const date = new Date(post.createdAt);
-    return Number.isNaN(date.getTime())
-      ? post.createdAt
-      : date.toLocaleDateString("ko-KR", {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        });
-  })();
+  const createdAtLabel = formatKoreanDate(post.createdAt);
 
   const handleClick = () => {
     router.push(`/community/${post.id}`);

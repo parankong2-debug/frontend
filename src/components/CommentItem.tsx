@@ -1,5 +1,6 @@
 "use client";
 
+import { formatKoreanDateTime } from "@/lib/date";
 import { Comment } from "@/types/post";
 import { useAuthStore } from "@/store/authStore";
 
@@ -17,12 +18,7 @@ export default function CommentItem({
   const user = useAuthStore((state) => state.user);
   const canDelete = !!onDelete && !!user && user.username === comment.author;
 
-  const createdAtLabel = (() => {
-    const date = new Date(comment.createdAt);
-    return Number.isNaN(date.getTime())
-      ? comment.createdAt
-      : date.toLocaleString("ko-KR");
-  })();
+  const createdAtLabel = formatKoreanDateTime(comment.createdAt);
 
   return (
     <article className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
