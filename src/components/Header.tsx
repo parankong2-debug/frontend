@@ -36,7 +36,7 @@ export default function Header() {
             Community
           </Link>
           <Link href="/reservation" className="transition-colors hover:text-slate-900">
-            Studyroom Reservation
+            Study room Reservation
           </Link>
           <Link href="/community/write" className="transition-colors hover:text-slate-900">
             Write
