@@ -1,47 +1,62 @@
 "use client";
 
-import Link from "next/link";
-import { Post } from "@/types/post";
+import { formatKoreanDate } from "@/lib/date";
+import { PostBase } from "@/types/post";
+import { useRouter } from "next/navigation";
 
 interface PostCardProps {
-  post: Post;
+  post: PostBase & { commentCount?: number };
+}
+
+function previewText(content: string, maxLen = 140) {
+  const trimmed = content.replace(/\s+/g, " ").trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen).trim()}…`;
 }
 
 export default function PostCard({ post }: PostCardProps) {
+  const router = useRouter();
+
+  const createdAtLabel = formatKoreanDate(post.createdAt);
+
+  const handleClick = () => {
+    router.push(`/community/${post.id}`);
+  };
+
   return (
-    <Link href={`/community/${post.id}`} className="block group">
-      <div className="rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5">
-        <h2 className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-1">
-          {post.title}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-          {post.content}
-        </p>
-        <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-xs font-medium text-primary">
-              {post.author[0]}
-            </div>
-            <span>{post.author}</span>
-            <span className="text-border">|</span>
-            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
-              {post.likes}
-            </span>
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.48.432.447.74 1.04.586 1.641a4.483 4.483 0 01-.923 1.785A5.969 5.969 0 006 21c1.282 0 2.47-.402 3.445-1.087.81.22 1.668.337 2.555.337z" />
-              </svg>
-              {post.comments.length}
-            </span>
-          </div>
+    <button
+      type="button"
+      onClick={handleClick}
+      className="group flex h-full w-full flex-col rounded-2xl border border-slate-200/80 bg-white p-6 text-left shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_16px_40px_rgba(79,70,229,0.15)]"
+    >
+      <h2 className="text-lg font-semibold leading-snug tracking-tight text-slate-900 transition-colors group-hover:text-indigo-600">
+        {post.title}
+      </h2>
+
+      <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-slate-500">
+        {previewText(post.content)}
+      </p>
+
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
+        <div className="min-w-0">
+          <div className="truncate text-xs font-medium text-slate-700">{post.author}</div>
+          <time dateTime={post.createdAt} className="text-xs text-slate-400 tabular-nums">
+            {createdAtLabel}
+          </time>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-xs">
+          <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-600">
+            Like {post.likes}
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">
+            Comments {post.commentCount ?? 0}
+          </span>
         </div>
       </div>
-    </Link>
+
+      <div className="mt-3 flex items-center text-xs font-medium text-slate-400 transition-colors group-hover:text-indigo-500">
+        Read more -&gt;
+      </div>
+    </button>
   );
 }

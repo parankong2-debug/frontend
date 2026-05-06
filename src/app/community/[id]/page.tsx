@@ -1,130 +1,289 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getPosts, savePosts } from "@/lib/mockData";
-import { Post, Comment } from "@/types/post";
+import { AxiosError } from "axios";
+import {
+  createComment,
+  deleteComment,
+  deletePost,
+  fetchPost,
+  toggleLike,
+} from "@/lib/api";
+import { Comment, PostDetail } from "@/types/post";
 import CommentItem from "@/components/CommentItem";
+import { formatKoreanDateTime } from "@/lib/date";
+import { useAuthStore } from "@/store/authStore";
 
 export default function PostDetailPage() {
   const params = useParams();
-  const id = params.id as string;
+  const router = useRouter();
+  const postId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
-  const [post, setPost] = useState<Post | null>(null);
-  const [commentText, setCommentText] = useState("");
+  const [commentContent, setCommentContent] = useState("");
+  const [post, setPost] = useState<PostDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isCommenting, setIsCommenting] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+
+  const loadPost = async () => {
+    if (!postId) {
+      setPost(null);
+      setError("잘못된 게시글 경로입니다.");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchPost(postId);
+      setPost(data);
+    } catch (e) {
+      setPost(null);
+      if (e instanceof AxiosError && e.response?.status === 404) {
+        setError("존재하지 않는 게시글입니다.");
+      } else {
+        setError("게시글을 불러오지 못했습니다.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const posts = getPosts();
-    const found = posts.find((p) => p.id === id);
-    if (found) {
-      setPost(found);
+    void loadPost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]);
+
+  const createdAtLabel = (() => {
+    if (!post) return "";
+    return formatKoreanDateTime(post.createdAt);
+  })();
+
+  const canDeletePost = !!post && !!user && post.author === user.username;
+
+  const handleLike = async () => {
+    if (!postId || !post || isLiking) return;
+
+    setIsLiking(true);
+    try {
+      const updated = await toggleLike(postId);
+      setPost(updated);
+    } catch {
+      alert("좋아요 처리에 실패했습니다.");
+    } finally {
+      setIsLiking(false);
     }
-  }, [id]);
-
-  const handleLike = () => {
-    if (!post) return;
-    const posts = getPosts();
-    const updated = posts.map((p) =>
-      p.id === post.id ? { ...p, likes: p.likes + 1 } : p
-    );
-    savePosts(updated);
-    setPost({ ...post, likes: post.likes + 1 });
   };
 
-  const handleComment = () => {
-    if (!post || !commentText.trim()) return;
+  const handleComment = async () => {
+    if (!postId || !post || isCommenting) return;
 
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      content: commentText,
-      author: "익명",
-      createdAt: new Date().toISOString(),
-    };
+    const content = commentContent.trim();
+    if (!content) {
+      setCommentError("댓글 내용을 입력해주세요.");
+      return;
+    }
 
-    const updatedPost = { ...post, comments: [...post.comments, newComment] };
-    const posts = getPosts();
-    const updated = posts.map((p) => (p.id === post.id ? updatedPost : p));
-    savePosts(updated);
-    setPost(updatedPost);
-    setCommentText("");
+    setCommentError("");
+    setIsCommenting(true);
+    try {
+      const newComment = (await createComment(postId, { content })) as Comment;
+      setPost((prev) =>
+        prev ? { ...prev, comments: [...(prev.comments ?? []), newComment] } : prev
+      );
+      setCommentContent("");
+    } catch {
+      setCommentError("댓글 작성에 실패했습니다.");
+    } finally {
+      setIsCommenting(false);
+    }
   };
 
-  if (!post) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center text-muted-foreground">
-        게시글을 찾을 수 없습니다.
-      </div>
-    );
-  }
+  const handleDelete = async () => {
+    if (!postId || isDeleting) return;
+    const ok = confirm("정말 삭제하시겠습니까?");
+    if (!ok) return;
+
+    setIsDeleting(true);
+    try {
+      await deletePost(postId);
+      router.push("/community");
+    } catch {
+      alert("게시글 삭제에 실패했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCommentDelete = async (commentId: string) => {
+    if (!post || deletingCommentId) return;
+    const ok = confirm("댓글을 삭제하시겠습니까?");
+    if (!ok) return;
+
+    setDeletingCommentId(commentId);
+    try {
+      await deleteComment(commentId);
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: prev.comments.filter((comment) => comment.id !== commentId),
+            }
+          : prev
+      );
+    } catch {
+      alert("댓글 삭제에 실패했습니다.");
+    } finally {
+      setDeletingCommentId(null);
+    }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
-      <Link href="/community" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-        ← 목록으로
-      </Link>
+    <div className="min-h-screen bg-slate-50/60 text-slate-900">
+      <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-10">
+        <button
+          type="button"
+          onClick={() => router.push("/community")}
+          className="mb-6 inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
+        >
+          ← 목록으로
+        </button>
 
-      {/* 게시글 */}
-      <article className="mt-6">
-        <h1 className="text-3xl font-bold tracking-tight">{post.title}</h1>
-        <div className="flex items-center gap-3 mt-4 text-sm text-muted-foreground">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-xs font-medium text-primary">
-            {post.author[0]}
+        {loading ? (
+          <p className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            로딩 중...
+          </p>
+        ) : error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            <p className="text-sm text-rose-600">{error}</p>
+            <Link
+              href="/community"
+              className="mt-4 inline-flex rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-100"
+            >
+              목록으로 돌아가기
+            </Link>
           </div>
-          <span className="font-medium text-foreground">{post.author}</span>
-          <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-        </div>
-        <div className="mt-6 border-t border-border pt-6">
-          <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{post.content}</p>
-        </div>
-
-        <div className="mt-8">
-          <button
-            onClick={handleLike}
-            className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-500 active:scale-95"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-            </svg>
-            좋아요 {post.likes}
-          </button>
-        </div>
-      </article>
-
-      {/* 댓글 */}
-      <section className="mt-10 border-t border-border pt-8">
-        <h3 className="text-lg font-semibold mb-4">
-          댓글 <span className="text-muted-foreground font-normal">{post.comments.length}</span>
-        </h3>
-
-        {post.comments.length > 0 ? (
-          <div className="mb-6">
-            {post.comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
-            ))}
-          </div>
+        ) : !post ? (
+          <p className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+            게시글을 찾을 수 없습니다.
+          </p>
         ) : (
-          <p className="text-sm text-muted-foreground mb-6">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
-        )}
+          <div className="space-y-6">
+            <article className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.07)] sm:p-8">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                {post.title}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                <span>작성자 {post.author}</span>
+                <span className="text-slate-300">|</span>
+                <time dateTime={post.createdAt}>{createdAtLabel}</time>
+              </div>
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="댓글을 입력하세요"
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleComment()}
-            className="flex-1 rounded-lg border border-input bg-background px-4 py-2.5 text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
-          />
-          <button
-            onClick={handleComment}
-            disabled={!commentText.trim()}
-            className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
-          >
-            작성
-          </button>
-        </div>
-      </section>
+              <div className="my-6 h-px bg-slate-100" />
+
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-700">
+                {post.content}
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleLike}
+                  disabled={isLiking}
+                  className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(79,70,229,0.25)] transition-all hover:-translate-y-0.5 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isLiking ? "처리 중..." : `Like ${post.likes}`}
+                </button>
+                {canDeletePost && (
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isDeleting ? "삭제 중..." : "삭제"}
+                  </button>
+                )}
+              </div>
+            </article>
+
+            <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-[0_14px_40px_rgba(15,23,42,0.07)] sm:p-8">
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold tracking-tight text-slate-900">
+                  댓글
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  로그인한 사용자 이름으로 댓글이 작성됩니다.
+                </p>
+              </div>
+
+              {isLoggedIn ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6">
+                  <textarea
+                    value={commentContent}
+                    onChange={(e) => setCommentContent(e.target.value)}
+                    placeholder="댓글을 입력하세요"
+                    className="min-h-[150px] w-full rounded-xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-800 outline-none transition placeholder:text-slate-300 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+                  />
+                  {commentError && (
+                    <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+                      {commentError}
+                    </p>
+                  )}
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleComment}
+                      disabled={isCommenting || !commentContent.trim()}
+                      className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isCommenting ? "작성 중..." : "댓글 작성"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-6 text-center">
+                  <p className="text-sm text-slate-500">
+                    로그인 후 댓글을 작성할 수 있습니다.
+                  </p>
+                  <Link
+                    href="/login"
+                    className="mt-3 inline-flex rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500"
+                  >
+                    로그인
+                  </Link>
+                </div>
+              )}
+
+              <div className="mt-5 space-y-3">
+                {post.comments.length > 0 ? (
+                  post.comments.map((comment) => (
+                    <CommentItem
+                      key={comment.id}
+                      comment={comment}
+                      onDelete={handleCommentDelete}
+                      deleting={deletingCommentId === comment.id}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    아직 댓글이 없습니다. 첫 댓글을 작성해보세요.
+                  </p>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
